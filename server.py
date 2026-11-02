@@ -6,6 +6,13 @@ import re
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 
+# Reconfigure stdout for utf-8 on Windows
+if sys.platform.startswith("win"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 # Ensure requests is available
 try:
     import requests
@@ -485,8 +492,8 @@ Action: Automatically formatted for 1930 Cyber Crime Portal submission.
 
 def run():
     print(f"\n==================================================")
-    print(f"🛡️  VaniCyberKavach Server Running!")
-    print(f"👉 Open in your browser: http://localhost:{PORT}")
+    print(f"[+] VaniCyberKavach Server Running!")
+    print(f"Open in your browser: http://localhost:{PORT}")
     print(f"==================================================\n")
     server = HTTPServer(("0.0.0.0", PORT), HoneypotHandler)
     server.serve_forever()
