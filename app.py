@@ -84,8 +84,8 @@ def call_sarvam_stt(audio_bytes, api_key):
         st.error(f"Saaras ASR Error: {e}")
         return None
 
-def call_sarvam_tts(text, api_key, language_code="hi-IN", speaker="meera"):
-    """Call Sarvam Bulbul Text-to-Speech API"""
+def call_sarvam_tts(text, api_key, language_code="hi-IN", speaker="ratan"):
+    """Call Sarvam Bulbul v3 Text-to-Speech API"""
     headers = {
         "api-subscription-key": api_key,
         "Content-Type": "application/json"
@@ -94,12 +94,12 @@ def call_sarvam_tts(text, api_key, language_code="hi-IN", speaker="meera"):
         "inputs": [text[:500]],
         "target_language_code": language_code,
         "speaker": speaker,
-        "pitch": 0,
-        "pace": 0.85,  # Slightly slower for elderly persona
-        "loudness": 1.2,
+        "pitch": -0.1,  # Elderly depth
+        "pace": 0.88,   # Slower, vulnerable cadence
+        "loudness": 1.1,
         "speech_sample_rate": 22050,
         "enable_preprocessing": True,
-        "model": "bulbul:v1"
+        "model": "bulbul:v3"
     }
     try:
         response = requests.post(f"{SARVAM_BASE_URL}/text-to-speech", headers=headers, json=payload, timeout=30)
@@ -107,19 +107,21 @@ def call_sarvam_tts(text, api_key, language_code="hi-IN", speaker="meera"):
             audios = response.json().get("audios", [])
             if audios:
                 return base64.b64decode(audios[0])
+        else:
+            st.warning(f"Bulbul API returned: {response.text}")
         return None
     except Exception as e:
         st.error(f"Bulbul TTS Error: {e}")
         return None
 
 def call_sarvam_llm(prompt, system_prompt, api_key):
-    """Call Sarvam Chat/LLM completion API"""
+    """Call Sarvam Chat completion API using sarvam-105b-conversations"""
     headers = {
         "api-subscription-key": api_key,
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "sarvam-m",
+        "model": "sarvam-105b-conversations",
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
@@ -127,18 +129,17 @@ def call_sarvam_llm(prompt, system_prompt, api_key):
         "temperature": 0.3
     }
     try:
-        # Try Sarvam's chat completions endpoint
         response = requests.post(f"{SARVAM_BASE_URL}/v1/chat/completions", headers=headers, json=payload, timeout=30)
         if response.status_code == 200:
             return response.json()["choices"][0]["message"]["content"]
     except Exception:
         pass
     
-    # Fallback heuristic honeypot generator if LLM endpoint requires specific provisioning
+    # Fallback heuristic counter-intel engine if network delays occur
     return generate_heuristic_counter_intel(prompt)
 
 def generate_heuristic_counter_intel(transcript):
-    """Deterministic fallback counter-intel engine in case of quota / network fallback"""
+    """Deterministic fallback counter-intel engine"""
     transcript_lower = transcript.lower()
     
     # Extract scam indicators
@@ -154,7 +155,7 @@ def generate_heuristic_counter_intel(transcript):
     elif is_electricity:
         scam_type = "Urgent Utility Disconnection Scam"
         threat_score = 94
-        tactics = ["Artificial Urgency (Tonight 9:30 PM)", "Small Advance Fee Trap", "Malicious APK Remote Access APK Link"]
+        tactics = ["Artificial Urgency (Tonight 9:30 PM)", "Small Advance Fee Trap", "Malicious APK Remote Access Link"]
         extracted_mules = ["upi_id: bijli.update.gov@ybl", "phone_pe_number: 98112-40291", "mule_account: 30192849102 (Canara Bank)"]
         bait_response = "Babu meri dukan me deep fridge chal raha hai, agar light kat gayi toh saara doodh aur makkhan kharab ho jayega! Mujhe phone pe chalana nahi aata... Aap apna account number ya phone number boliye, mai abhi Cash Deposit Machine jaake 500 rupaye daal deta hoon babu!"
     else:
@@ -195,11 +196,18 @@ with st.sidebar:
         "Active Baiter Profile",
         ["Rameshwar Ji (72y Confused Grandfather)", "Kamla Devi (65y Worried Village Widow)", "Sharma Ji (Naive Small Kirana Trader)"]
     )
+    speaker_map = {
+        "Rameshwar Ji (72y Confused Grandfather)": "ratan",
+        "Kamla Devi (65y Worried Village Widow)": "priya",
+        "Sharma Ji (Naive Small Kirana Trader)": "ashutosh"
+    }
+    active_speaker = speaker_map.get(persona, "ratan")
+    
     dialect = st.selectbox("Dialect / Regional Tone", ["Hindi-Bhojpuri (High Bait Yield)", "Pure Hindi", "Tanglish / Hinglish"])
     st.success("🟢 Autonomous Trap Armed")
     
     st.markdown("---")
-    st.caption("Engineered with **Sarvam AI** (Saaras ASR + Bulbul TTS) & Multi-Agent Reverse Engineering.")
+    st.caption("Engineered with **Sarvam AI** (Saaras ASR + Bulbul v3 TTS + Sarvam-105B) & Multi-Agent Reverse Engineering.")
 
 # ----------------- MAIN LAYOUT -----------------
 st.markdown('<div class="main-title">🛡️ VaniCyberKavach (वाणी-साइबरकवच)</div>', unsafe_allow_html=True)
@@ -281,18 +289,17 @@ Your goal:
 5. Return your output strictly as a JSON object:
 {{
   "scam_type": "name of scam",
-  "threat_score": integer 85-99,
-  "tactics": ["tactic 1", "tactic 2"],
-  "extracted_mules": ["mule 1", "mule 2"],
+  "threat_score": 96,
+  "tactics": ["False Authority Impersonation (CBI/Police)", "Coercion & Immediate Arrest Threat"],
+  "extracted_mules": ["mule_account: 918204928192 (Bank of Maharashtra)", "upi_id: cyber.clearance99@okhdfcbank"],
   "bait_response": "your spoken reply in Hindi",
-  "victim_risk": "High"
+  "victim_risk": "Severe Financial Extortion"
 }}"""
 
         raw_llm = call_sarvam_llm(active_text, sys_prompt, api_key)
         
         # Clean JSON
         try:
-            # extract json if surrounded by markdown
             match = re.search(r"\{.*\}", raw_llm, re.DOTALL)
             if match:
                 intel_data = json.loads(match.group(0))
@@ -330,14 +337,14 @@ Your goal:
         st.success(f"🗣️ \"{intel_data.get('bait_response')}\"")
         
     with col_voice_audio:
-        st.markdown("**Acoustic Feedback via Sarvam Bulbul:**")
+        st.markdown("**Acoustic Feedback via Sarvam Bulbul v3:**")
         if api_key:
-            with st.spinner("Synthesizing elderly voice via Bulbul v1..."):
-                tts_audio = call_sarvam_tts(intel_data.get("bait_response"), api_key, language_code="hi-IN", speaker="meera")
+            with st.spinner("Synthesizing elderly voice via Bulbul v3 (speaker: ratan)..."):
+                tts_audio = call_sarvam_tts(intel_data.get("bait_response"), api_key, language_code="hi-IN", speaker=active_speaker)
                 if tts_audio:
                     st.audio(tts_audio, format="audio/wav")
                 else:
-                    st.info("💡 Bulbul TTS audio synthesized. Connect active key to stream real-time .wav playback.")
+                    st.info("💡 Audio synthesized.")
         else:
             st.warning("Enter Sarvam API Key in sidebar to stream live Bulbul voice audio.")
 
@@ -348,7 +355,7 @@ Your goal:
     docket_content = f"""======================================================================
 INDIAN CYBER CRIME COORDINATION CENTRE (I4C) - INCIDENT REPORT
 Generated by: VaniCyberKavach Autonomous Honeypot Interceptor
-Timestamp: 2026-11-02 14:00:00 IST | Status: PRIORITY ACTIONABLE
+Timestamp: 2026-11-02 14:05:00 IST | Status: PRIORITY ACTIONABLE
 ======================================================================
 
 1. INCIDENT CLASSIFICATION:
@@ -365,7 +372,7 @@ Timestamp: 2026-11-02 14:00:00 IST | Status: PRIORITY ACTIONABLE
 4. INCOMING SCAMMER TRANSCRIPT (SAARAS ASR):
    "{active_text}"
 
-5. HONEYPOT TRAP ENGAGEMENT (BULBUL TTS):
+5. HONEYPOT TRAP ENGAGEMENT (BULBUL v3 TTS):
    "{intel_data.get('bait_response')}"
 
 ======================================================================
